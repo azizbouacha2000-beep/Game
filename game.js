@@ -1,6 +1,5 @@
-let scene, camera, renderer, car, enemies = [];
+let scene, camera, renderer, enemies = [];
 let score = 0;
-let roadSegments = [];
 
 init();
 animate();
@@ -14,6 +13,7 @@ function init() {
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // لتحسين وضوح الجودة على هواتف ريتنا
     document.body.appendChild(renderer.domElement);
 
     // الإضاءة
@@ -24,14 +24,14 @@ function init() {
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // 2. إنشاء السيارة من منظور الشخص الأول (داخل السيارة)
+    // 2. موقع الكاميرا (داخل السيارة)
     camera.position.set(0, 2, 2);
 
-    // 3. بناء الطريق الشارعي والأشجار (لإعطاء إيحاء الحركة)
+    // 3. بناء الطريق والأعداء
     createRoad();
 
-    // أحداث النقر لإطلاق النار
-    window.addEventListener('click', onShoot);
+    // دعم اللمس على الهاتف (النقر على الشاشة لإطلاق النار)
+    window.addEventListener('touchstart', onTouchShoot, { passive: false });
     window.addEventListener('resize', onWindowResize);
 }
 
@@ -44,43 +44,64 @@ function createRoad() {
     road.position.z = -500;
     scene.add(road);
 
-    // إضافة أعداء (أهداف) عشوائية على جانبي الطريق
+    // إضافة أعداء (أهداف) عشوائية أمام السيارة
     for (let i = 0; i < 20; i++) {
-        const enemyGeo = new THREE.BoxGeometry(1.5, 3, 1.5);
-        const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const enemyGeo = new THREE.BoxGeometry(1.8, 3.5, 1.8);
+        const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
         const enemy = new THREE.Mesh(enemyGeo, enemyMat);
         
-        enemy.position.x = (Math.random() - 0.5) * 8;
-        enemy.position.y = 1.5;
-        enemy.position.z = -50 - (i * 30);
+        enemy.position.x = (Math.random() - 0.5) * 7;
+        enemy.position.y = 1.7;
+        enemy.position.z = -40 - (i * 25);
         
         scene.add(enemy);
         enemies.push(enemy);
     }
 }
 
-function onShoot() {
-    // محاكاة إطلاق النار والتأكد من الإصابة في المنتصف
+function onTouchShoot(e) {
+    e.preventDefault(); // منع السلوك الافتراضي للمتصفح مثل التمرير
+    
+    // عند النقر بأي مكان على شاشة الهاتف، يتم إطلاق النار على أقرب عدو
     if (enemies.length > 0) {
-        // كمثال بسيط: إزالة أول أعداء تقترب وإضافة نقاط
         const target = enemies[0];
-        // تأثير بصري بسيط للاختفاء
+        
+        // تأثير اهتزاز بسيط أو اختفاء العدو عند إصابته
         scene.remove(target);
         enemies.shift();
         
         score += 10;
         document.getElementById('score').innerText = score;
+        
+        // إعادة إنتاج عدو جديد في البعيد لكي تستمر اللعبة
+        spawnNewEnemy();
     }
+}
+
+function spawnNewEnemy() {
+    const enemyGeo = new THREE.BoxGeometry(1.8, 3.5, 1.8);
+    const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+    const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+    
+    enemy.position.x = (Math.random() - 0.5) * 7;
+    enemy.position.y = 1.7;
+    enemy.position.z = -300; // يبدأ من بعيد جداً
+    
+    scene.add(enemy);
+    enemies.push(enemy);
 }
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // تحريك الأعداء نحو الكاميرا لمحاكاة حركة السيارة للأمام
+    // تحريك الأعداء نحو الكاميرا لمحاكاة حركة السيارة للأمام بسرعة سلسة
     enemies.forEach(enemy => {
-        enemy.position.z += 0.5; // سرعة حركة الشارع والسيارة
-        if (enemy.position.z > 5) {
-            enemy.position.z = -300; // إعادة تدوير العدو للخلف
+        enemy.position.z += 0.6; // سرعة تقدم السيارة
+        
+        // إذا تجاوز العدو الكاميرا، يتم إرجاعه للوراء
+        if (enemy.position.z > 4) {
+            enemy.position.z = -250;
+            enemy.position.x = (Math.random() - 0.5) * 7;
         }
     });
 
